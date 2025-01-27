@@ -26,15 +26,6 @@ const getSecret = async (
   }
 };
 
-// Hugging Face API Configuration
-const HUGGING_FACE_API_URL =
-  "https://lsrt5bkedfuuxkrd.us-east-1.aws.endpoints.huggingface.cloud";
-
-// Load secrets
-const secrets = await getSecret("dev/sentiment");
-const TWITTER_BEARER_TOKEN = secrets.TwitterBearerToken;
-const HUGGING_FACE_API_TOKEN = secrets.HuggingFaceAPI;
-
 // Types
 interface Tweet {
   id: string;
@@ -63,6 +54,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   console.log("Event received:", event);
 
   try {
+    // Fetch secrets at runtime
+    const secrets = await getSecret("dev/sentiment");
+    const TWITTER_BEARER_TOKEN = secrets.TwitterBearerToken;
+    const HUGGING_FACE_API_TOKEN = secrets.HuggingFaceAPI;
+
     // Parse the query parameter from the request body
     const body = JSON.parse(event.body || "{}");
     const query = body.query;
@@ -77,7 +73,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     console.info(`Query received: "${query}"`);
 
     // Fetch tweets and analyze their sentiment
-    const { data: tweets, meta } = await searchTweets(query);
+    const { data: tweets, meta } = await searchTweets(
+      query,
+      TWITTER_BEARER_TOKEN
+    );
     console.info(
       `Fetched ${
         meta.result_count
@@ -89,7 +88,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const results = [];
     for (const tweet of tweets) {
       console.info(`Processing tweet ID: ${tweet.id}`);
-      const sentiment = await analyzeSentiment(tweet.text);
+      const sentiment = await analyzeSentiment(
+        tweet.text,
+        HUGGING_FACE_API_TOKEN
+      );
       console.info(
         `Sentiment analysis result for tweet ID ${tweet.id}: ${JSON.stringify(
           sentiment
@@ -113,7 +115,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     console.error("Error during Lambda execution:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "An internal error occurred." }),
+      body: JSON.stringify({
+        error: "An internal error occurred.",
+        details: error.message,
+      }),
     };
   }
 };
@@ -121,9 +126,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 // Function to search for tweets using Twitter API
 const searchTweets = async (
   query: string,
+  TWITTER_BEARER_TOKEN: string,
   maxResultsPerPage = 10,
   totalResults = 100
-): Promise<Tweet[]> => {
+): Promise<TwitterApiResponse> => {
   const url = "https://api.twitter.com/2/tweets/search/recent";
   const tweets: Tweet[] = [];
   let nextToken: string | undefined = undefined;
@@ -169,12 +175,22 @@ const searchTweets = async (
     }
   }
 
-  console.info(`Total tweets fetched: ${tweets.length}`);
-  return tweets.slice(0, totalResults); // Ensure the total number does not exceed the limit
+  return {
+    data: tweets.slice(0, totalResults), // Ensure the total number does not exceed the limit
+    meta: {
+      newest_id: tweets[0]?.id || "",
+      oldest_id: tweets[tweets.length - 1]?.id || "",
+      result_count: tweets.length,
+      next_token: nextToken,
+    },
+  };
 };
 
 // Function to analyze sentiment using Hugging Face API
-const analyzeSentiment = async (text: string): Promise<Sentiment> => {
+const analyzeSentiment = async (
+  text: string,
+  HUGGING_FACE_API_TOKEN: string
+): Promise<Sentiment> => {
   const response = await fetch(HUGGING_FACE_API_URL, {
     method: "POST",
     headers: {
