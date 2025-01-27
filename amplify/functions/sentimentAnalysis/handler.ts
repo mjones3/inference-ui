@@ -5,6 +5,8 @@ import { DynamoDB, SecretsManager } from "aws-sdk";
 // AWS DynamoDB Configuration
 const dynamoDb = new DynamoDB.DocumentClient();
 const DYNAMODB_TABLE_NAME = "Tweets";
+const HUGGING_FACE_API_URL =
+  "https://lsrt5bkedfuuxkrd.us-east-1.aws.endpoints.huggingface.cloud";
 
 const secretsManager = new SecretsManager();
 
@@ -112,13 +114,20 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       body: JSON.stringify(results),
     };
   } catch (error) {
-    console.error("Error during Lambda execution:", error);
+    if (error instanceof Error) {
+      console.error("Error during Lambda execution:", error.message);
+      return {
+        statusCode: 500,
+        body: JSON.stringify({
+          error: "An internal error occurred.",
+          details: error.message,
+        }),
+      };
+    }
+    console.error("Unknown error during Lambda execution:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({
-        error: "An internal error occurred.",
-        details: error.message,
-      }),
+      body: JSON.stringify({ error: "An unknown error occurred." }),
     };
   }
 };
