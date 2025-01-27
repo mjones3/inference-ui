@@ -1,23 +1,23 @@
 import type { APIGatewayProxyHandler } from "aws-lambda";
 import fetch from "node-fetch";
-import { DynamoDB } from "aws-sdk";
+import { DynamoDB, SecretsManager } from "aws-sdk";
 
 // AWS DynamoDB Configuration
 const dynamoDb = new DynamoDB.DocumentClient();
 const DYNAMODB_TABLE_NAME = "Tweets";
 
-import { SecretsManager } from "aws-sdk";
-
 const secretsManager = new SecretsManager();
 
 // Function to retrieve secret from AWS Secrets Manager
-const getSecret = async (secretName: string): Promise<string> => {
+const getSecret = async (
+  secretName: string
+): Promise<Record<string, string>> => {
   try {
     const secretValue = await secretsManager
       .getSecretValue({ SecretId: secretName })
       .promise();
     if (secretValue.SecretString) {
-      return secretValue.SecretString;
+      return JSON.parse(secretValue.SecretString); // Parse the JSON string into an object
     }
     throw new Error("Secret string is empty.");
   } catch (error) {
@@ -25,17 +25,14 @@ const getSecret = async (secretName: string): Promise<string> => {
     throw error;
   }
 };
+const secrets = await getSecret("dev/sentiment");
 
-const TWITTER_BEARER_TOKEN = await getSecret("TwitterBearerToken");
-
-// Twitter API Configuration
-const TWITTER_BEARER_TOKEN =
-  "AAAAAAAAAAAAAAAAAAAAAAcGygEAAAAATYrSyx%2BIe88r5ziUaiGFDlhRG6E%3DFRUyWMhs3zXvMomoQY4cxSYFxQfj9oGor5q5ctzcW7hwV5cuxa";
+const TWITTER_BEARER_TOKEN = secrets.TwitterBearerToken;
 
 // Hugging Face API Configuration
 const HUGGING_FACE_API_URL =
   "https://lsrt5bkedfuuxkrd.us-east-1.aws.endpoints.huggingface.cloud";
-const HUGGING_FACE_API_TOKEN = await getSecret("HuggingFaceAPI");
+const HUGGING_FACE_API_TOKEN = secrets.HuggingFaceAPI;
 
 // Types
 interface Tweet {

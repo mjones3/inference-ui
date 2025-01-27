@@ -1,22 +1,46 @@
 import React, { useState } from "react";
-
+import { SecretsManager } from "aws-sdk";
+import TwitterSentimentSearch from "./TwitterSentimentSearch";
 interface HuggingFaceResponse {
   label: string;
   score: number;
 }
 
 async function query(data: { inputs: string }): Promise<HuggingFaceResponse[]> {
-  const response = await fetch(
-    "https://lsrt5bkedfuuxkrd.us-east-1.aws.endpoints.huggingface.cloud",
-    {
-      headers: {
-        Authorization: "Bearer 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",
-        "Content-Type": "application/json",
-      },
-      method: "POST",
-      body: JSON.stringify(data),
+  const secretsManager = new SecretsManager();
+
+  // Function to retrieve secret from AWS Secrets Manager
+  const getSecret = async (
+    secretName: string
+  ): Promise<Record<string, string>> => {
+    try {
+      const secretValue = await secretsManager
+        .getSecretValue({ SecretId: secretName })
+        .promise();
+      if (secretValue.SecretString) {
+        return JSON.parse(secretValue.SecretString); // Parse the JSON string into an object
+      }
+      throw new Error("Secret string is empty.");
+    } catch (error) {
+      console.error(`Failed to retrieve secret ${secretName}:`, error);
+      throw error;
     }
-  );
+  };
+  const secrets = await getSecret("dev/sentiment");
+
+  // Hugging Face API Configuration
+  const HUGGING_FACE_API_URL =
+    "https://lsrt5bkedfuuxkrd.us-east-1.aws.endpoints.huggingface.cloud";
+  const HUGGING_FACE_API_TOKEN = secrets.HuggingFaceAPI;
+
+  const response = await fetch(HUGGING_FACE_API_URL, {
+    headers: {
+      Authorization: `Bearer ${HUGGING_FACE_API_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+    body: JSON.stringify(data),
+  });
   const result = await response.json();
   return result;
 }
@@ -76,6 +100,8 @@ const App: React.FC = () => {
           <strong>{sentiment}</strong>
         </div>
       )}
+
+      <TwitterSentimentSearch />
     </div>
   );
 };
