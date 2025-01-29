@@ -136,8 +136,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 const searchTweets = async (
   query: string,
   TWITTER_BEARER_TOKEN: string,
-  maxResultsPerPage = 10,
-  totalResults = 100
+  maxResultsPerPage = 1,
+  totalResults = 2
 ): Promise<TwitterApiResponse> => {
   const url = "https://api.twitter.com/2/tweets/search/recent";
   const tweets: Tweet[] = [];

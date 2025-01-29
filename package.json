@@ -13,8 +13,10 @@
   "dependencies": {
     "@aws-amplify/datastore": "^5.0.69",
     "@aws-amplify/ui-react": "^6.5.5",
+    "@aws-cdk/aws-iam": "^1.203.0",
+    "@aws-cdk/aws-secretsmanager": "^1.203.0",
     "aws-amplify": "^6.12.2",
-    "aws-sdk": "^2.1692.0",
+    "@aws-amplify/core": "^6.0.12",
     "node-fetch": "^3.3.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

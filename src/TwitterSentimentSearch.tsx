@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { TwitterSearchResponse } from "./types";
 
 const TwitterSentimentSearch: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -6,7 +7,7 @@ const TwitterSentimentSearch: React.FC = () => {
 
   const handleSearch = async () => {
     try {
-      const response = await fetch("https://placeholder-url.com/api", {
+      const response = await fetch("/api/twitter-sentiment", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -18,7 +19,7 @@ const TwitterSentimentSearch: React.FC = () => {
         throw new Error(`Error: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as TwitterSearchResponse;
       setResult(`Search Results: ${JSON.stringify(data)}`);
     } catch (error) {
       console.error(error);

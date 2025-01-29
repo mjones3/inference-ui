@@ -1,32 +1,12 @@
 import React, { useState } from "react";
-import { SecretsManager } from "aws-sdk";
 import TwitterSentimentSearch from "./TwitterSentimentSearch";
-interface HuggingFaceResponse {
-  label: string;
-  score: number;
-}
+import { HuggingFaceResponse } from "./types";
 
 async function query(data: { inputs: string }): Promise<HuggingFaceResponse[]> {
-  const secretsManager = new SecretsManager();
-
-  // Function to retrieve secret from AWS Secrets Manager
-  const getSecret = async (
-    secretName: string
-  ): Promise<Record<string, string>> => {
-    try {
-      const secretValue = await secretsManager
-        .getSecretValue({ SecretId: secretName })
-        .promise();
-      if (secretValue.SecretString) {
-        return JSON.parse(secretValue.SecretString); // Parse the JSON string into an object
-      }
-      throw new Error("Secret string is empty.");
-    } catch (error) {
-      console.error(`Failed to retrieve secret ${secretName}:`, error);
-      throw error;
-    }
+  // Get the secret using AWS Secrets Manager via Amplify
+  const secrets = {
+    HuggingFaceAPI: process.env.REACT_APP_HUGGINGFACE_API_KEY || "",
   };
-  const secrets = await getSecret("dev/sentiment");
 
   // Hugging Face API Configuration
   const HUGGING_FACE_API_URL =
@@ -57,7 +37,8 @@ const App: React.FC = () => {
       const response = await query({ inputs: text });
       // DistilBERT sentiment model typically returns an array of { label, score }
       if (response && response.length > 0) {
-        const { label, score } = response[0];
+        const result = response[0];
+        const { label, score } = result;
         setSentiment(`Sentiment: ${label} (Score: ${score.toFixed(2)})`);
       } else {
         setSentiment("No sentiment data returned.");
