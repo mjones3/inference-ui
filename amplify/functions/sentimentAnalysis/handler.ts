@@ -79,6 +79,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       query,
       TWITTER_BEARER_TOKEN
     );
+
+    console.log(`Tweets: ${tweets.toString}`);
+
     console.info(
       `Fetched ${
         meta.result_count
@@ -136,8 +139,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 const searchTweets = async (
   query: string,
   TWITTER_BEARER_TOKEN: string,
-  maxResultsPerPage = 1,
-  totalResults = 2
+  maxResultsPerPage = 10,
+  totalResults = 10
 ): Promise<TwitterApiResponse> => {
   const url = "https://api.twitter.com/2/tweets/search/recent";
   const tweets: Tweet[] = [];
