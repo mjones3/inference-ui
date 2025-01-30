@@ -7,7 +7,7 @@ import { DynamoDB, SecretsManager } from "aws-sdk";
 const dynamoDb = new DynamoDB.DocumentClient();
 const DYNAMODB_TABLE_NAME = "Tweets";
 const HUGGING_FACE_API_URL =
-  "https://rxrvkd3gxtl2id45.us-east-1.aws.endpoints.huggingface.cloud";
+  "https://api-inference.huggingface.co/models/distilbert/distilbert-base-uncased-finetuned-sst-2-english";
 const secretsManager = new SecretsManager();
 
 // Function to retrieve secrets from AWS Secrets Manager
