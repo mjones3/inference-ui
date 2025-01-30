@@ -102,15 +102,23 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       // Process this batch of tweets
       for (const tweet of tweets) {
         console.info(`Processing tweet ID: ${tweet.id}`);
+
         const sentiment = await analyzeSentiment(
           tweet.text,
           HUGGING_FACE_API_TOKEN
         );
+
+        if (!sentiment || !sentiment.label) {
+          console.warn(`Skipping tweet ${tweet.id} due to missing sentiment.`);
+          continue; // Skip storing this tweet if sentiment is not valid
+        }
+
         console.info(
           `Sentiment analysis result for tweet ID ${tweet.id}: ${JSON.stringify(
             sentiment
           )}`
         );
+
         await storeTweetInDynamoDB(tweet, sentiment);
         results.push({
           tweet_id: tweet.id,
@@ -193,7 +201,8 @@ const analyzeSentiment = async (
   text: string,
   HUGGING_FACE_API_TOKEN: string
 ): Promise<Sentiment> => {
-  console.log(JSON.stringify({ inputs: text }));
+  console.log(`Sending text to Hugging Face API: ${text}`);
+
   const response = await fetch(HUGGING_FACE_API_URL, {
     method: "POST",
     headers: {
@@ -204,16 +213,20 @@ const analyzeSentiment = async (
   });
 
   if (!response.ok) {
+    console.error(`Hugging Face API Error: ${await response.text()}`);
     throw new Error(
       `Hugging Face API error: ${response.status} - ${await response.text()}`
     );
   }
 
   const result = await response.json();
+  console.log(`Hugging Face API Response: ${JSON.stringify(result)}`);
+
   if (Array.isArray(result) && result.length > 0) {
     return result[0];
   }
 
+  console.warn("Hugging Face API returned unexpected format:", result);
   return { label: "UNKNOWN", score: 0 };
 };
 
@@ -234,12 +247,11 @@ const storeTweetInDynamoDB = async (
     },
   };
 
+  console.info(`Storing tweet in DynamoDB: ${JSON.stringify(params.Item)}`);
+
   try {
-    console.info(`Storing tweet ID: ${tweet.id} in DynamoDB.`);
     await dynamoDb.put(params).promise();
-    console.info(
-      `Tweet ID ${tweet.id} successfully stored with sentiment: ${sentiment.label}`
-    );
+    console.info(`Tweet ${tweet.id} stored successfully.`);
   } catch (error) {
     console.error(`Error storing tweet ${tweet.id}:`, error);
     throw error;
