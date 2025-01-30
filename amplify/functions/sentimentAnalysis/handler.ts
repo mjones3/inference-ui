@@ -188,10 +188,12 @@ const searchTweets = async (
 };
 
 // Function to analyze sentiment using Hugging Face API
+
 const analyzeSentiment = async (
   text: string,
   HUGGING_FACE_API_TOKEN: string
 ): Promise<Sentiment> => {
+  console.log(JSON.stringify({ inputs: text }));
   const response = await fetch(HUGGING_FACE_API_URL, {
     method: "POST",
     headers: {

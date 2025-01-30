@@ -10,13 +10,16 @@ const TwitterSentimentSearch: React.FC = () => {
     new Promise((resolve) => setTimeout(resolve, ms));
 
   const fetchTweetBatch = async (query: string) => {
-    const response = await fetch("/api/twitter-sentiment", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ query: query }),
-    });
+    const response = await fetch(
+      "https://ib1olmvkt1.execute-api.us-east-1.amazonaws.com/dev/sentiment",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query: query }),
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`Error: ${response.status}`);
