@@ -78,17 +78,18 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const results = [];
     let nextToken: string | undefined;
     let totalProcessed = 0;
-    const maxTotalTweets = 5000;
-
+    const maxTotalTweets = 30;
     // Process tweets in batches
     do {
       // Fetch one page of tweets
+      console.info("Fetching tweets from Twitter API...");
       const response = await searchTweets(
         query,
         TWITTER_BEARER_TOKEN,
         10,
         nextToken
       );
+
       const { data: tweets, meta } = response;
 
       console.info(
@@ -103,29 +104,42 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       for (const tweet of tweets) {
         console.info(`Processing tweet ID: ${tweet.id}`);
 
-        const sentiment = await analyzeSentiment(
-          tweet.text,
-          HUGGING_FACE_API_TOKEN
-        );
+        try {
+          console.info(`Sending text to Hugging Face API: "${tweet.text}"`);
 
-        if (!sentiment || !sentiment.label) {
-          console.warn(`Skipping tweet ${tweet.id} due to missing sentiment.`);
-          continue; // Skip storing this tweet if sentiment is not valid
+          // Ensure this function does not move forward until the sentiment API responds
+          const sentiment = await analyzeSentiment(
+            tweet.text,
+            HUGGING_FACE_API_TOKEN
+          );
+
+          // Verify sentiment is valid before storing
+          if (!sentiment || !sentiment.label) {
+            console.warn(
+              `Skipping tweet ${tweet.id} due to missing sentiment.`
+            );
+            continue; // Skip storing this tweet if sentiment is not valid
+          }
+
+          console.info(
+            `Sentiment analysis result for tweet ID ${
+              tweet.id
+            }: ${JSON.stringify(sentiment)}`
+          );
+
+          // Store the tweet and sentiment in DynamoDB
+          await storeTweetInDynamoDB(tweet, sentiment);
+          console.info(`Stored tweet ${tweet.id} successfully.`);
+
+          results.push({
+            tweet_id: tweet.id,
+            text: tweet.text,
+            sentiment_label: sentiment.label,
+            sentiment_score: sentiment.score,
+          });
+        } catch (error) {
+          console.error(`Error processing tweet ${tweet.id}:`, error);
         }
-
-        console.info(
-          `Sentiment analysis result for tweet ID ${tweet.id}: ${JSON.stringify(
-            sentiment
-          )}`
-        );
-
-        await storeTweetInDynamoDB(tweet, sentiment);
-        results.push({
-          tweet_id: tweet.id,
-          text: tweet.text,
-          sentiment_label: sentiment.label,
-          sentiment_score: sentiment.score,
-        });
       }
 
       totalProcessed += tweets.length;
@@ -200,8 +214,8 @@ const searchTweets = async (
 const analyzeSentiment = async (
   text: string,
   HUGGING_FACE_API_TOKEN: string
-): Promise<Sentiment> => {
-  console.log(`Sending text to Hugging Face API: ${text}`);
+): Promise<Sentiment | null> => {
+  console.info(`Sending text to Hugging Face API: "${text}"`);
 
   const response = await fetch(HUGGING_FACE_API_URL, {
     method: "POST",
@@ -213,21 +227,32 @@ const analyzeSentiment = async (
   });
 
   if (!response.ok) {
-    console.error(`Hugging Face API Error: ${await response.text()}`);
-    throw new Error(
-      `Hugging Face API error: ${response.status} - ${await response.text()}`
+    console.error(
+      `Hugging Face API Error: ${response.status} - ${await response.text()}`
     );
+    return null;
   }
 
   const result = await response.json();
-  console.log(`Hugging Face API Response: ${JSON.stringify(result)}`);
+  console.info(`Hugging Face API Response: ${JSON.stringify(result)}`);
 
-  if (Array.isArray(result) && result.length > 0) {
-    return result[0];
+  // Fix: Extract sentiment correctly from the nested structure
+  if (
+    Array.isArray(result) &&
+    result.length > 0 &&
+    Array.isArray(result[0]) &&
+    result[0].length > 0
+  ) {
+    // Find the sentiment with the highest score
+    const bestSentiment = result[0].reduce(
+      (max, item) => (item.score > max.score ? item : max),
+      result[0][0]
+    );
+    return bestSentiment;
   }
 
-  console.warn("Hugging Face API returned unexpected format:", result);
-  return { label: "UNKNOWN", score: 0 };
+  console.warn("Unexpected Hugging Face response format:", result);
+  return null;
 };
 
 // Function to store a tweet in DynamoDB
