@@ -5,12 +5,12 @@ import { HuggingFaceResponse } from "./types";
 async function query(data: { inputs: string }): Promise<HuggingFaceResponse[]> {
   // Get the secret using AWS Secrets Manager via Amplify
   const secrets = {
-    HuggingFaceAPI: process.env.REACT_APP_HUGGINGFACE_API_KEY || "",
+    HuggingFaceAPI: import.meta.env.VITE_HUGGINGFACE_API_KEY || "",
   };
 
   // Hugging Face API Configuration
   const HUGGING_FACE_API_URL =
-    "https://lsrt5bkedfuuxkrd.us-east-1.aws.endpoints.huggingface.cloud";
+    "https://rxrvkd3gxtl2id45.us-east-1.aws.endpoints.huggingface.cloud";
   const HUGGING_FACE_API_TOKEN = secrets.HuggingFaceAPI;
 
   const response = await fetch(HUGGING_FACE_API_URL, {
