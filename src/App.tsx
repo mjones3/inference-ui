@@ -82,7 +82,9 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <TwitterSentimentSearch />
+      <div style={{ marginTop: "3rem" }}>
+        <TwitterSentimentSearch />
+      </div>
     </div>
   );
 };

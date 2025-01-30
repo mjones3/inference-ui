@@ -4,26 +4,61 @@ import { TwitterSearchResponse } from "./types";
 const TwitterSentimentSearch: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [result, setResult] = useState("");
+  const [isFetching, setIsFetching] = useState(false);
+
+  const sleep = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
+
+  const fetchTweetBatch = async (query: string) => {
+    const response = await fetch("/api/twitter-sentiment", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: query }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+
+    return (await response.json()) as TwitterSearchResponse;
+  };
 
   const handleSearch = async () => {
+    setIsFetching(true);
+    setResult("");
     try {
-      const response = await fetch("/api/twitter-sentiment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ query: searchTerm }),
-      });
+      const allTweets: TwitterSearchResponse[] = [];
 
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`);
+      // Fetch first batch of 390 tweets (39 requests of 10 tweets each)
+      for (let i = 0; i < 39 && !isFetching; i++) {
+        const data = await fetchTweetBatch(searchTerm);
+        allTweets.push(data);
+        setResult(`Fetched ${(i + 1) * 10} tweets out of first batch...`);
       }
 
-      const data = (await response.json()) as TwitterSearchResponse;
-      setResult(`Search Results: ${JSON.stringify(data)}`);
+      // Wait 65 seconds
+      setResult("Waiting 65 seconds before fetching next batch...");
+      await sleep(65000);
+
+      // Fetch second batch of 390 tweets
+      for (let i = 39; i < 78 && !isFetching; i++) {
+        const data = await fetchTweetBatch(searchTerm);
+        allTweets.push(data);
+        setResult(`Fetched ${(i + 1) * 10} tweets out of total...`);
+      }
+
+      setResult(
+        `Complete! Total tweets fetched: ${
+          allTweets.length * 10
+        }\n${JSON.stringify(allTweets)}`
+      );
     } catch (error) {
       console.error(error);
       setResult("An error occurred while performing the search.");
+    } finally {
+      setIsFetching(false);
     }
   };
 
@@ -51,6 +86,7 @@ const TwitterSentimentSearch: React.FC = () => {
         />
         <button
           onClick={handleSearch}
+          disabled={isFetching}
           style={{
             padding: "0.5rem 1rem",
             backgroundColor: "#007bff",

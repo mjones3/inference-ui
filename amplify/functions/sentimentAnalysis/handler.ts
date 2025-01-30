@@ -1,3 +1,4 @@
+/* eslint-disable no-constant-condition */
 import type { APIGatewayProxyHandler } from "aws-lambda";
 import fetch from "node-fetch";
 import { DynamoDB, SecretsManager } from "aws-sdk";
@@ -73,42 +74,60 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     console.info(`Query received: "${query}"`);
 
-    // Fetch tweets and analyze their sentiment
-    const { data: tweets, meta } = await searchTweets(
-      query,
-      TWITTER_BEARER_TOKEN
-    );
-
-    console.log(`Tweets: ${tweets.toString}`);
-
-    console.info(
-      `Fetched ${
-        meta.result_count
-      } tweets for query: "${query}". Pagination token: ${
-        meta.next_token || "None"
-      }`
-    );
-
+    // Initialize results array
     const results = [];
-    for (const tweet of tweets) {
-      console.info(`Processing tweet ID: ${tweet.id}`);
-      const sentiment = await analyzeSentiment(
-        tweet.text,
-        HUGGING_FACE_API_TOKEN
+    let nextToken: string | undefined;
+    let totalProcessed = 0;
+    const maxTotalTweets = 5000;
+
+    // Process tweets in batches
+    do {
+      // Fetch one page of tweets
+      const response = await searchTweets(
+        query,
+        TWITTER_BEARER_TOKEN,
+        10,
+        nextToken
       );
+      const { data: tweets, meta } = response;
+
       console.info(
-        `Sentiment analysis result for tweet ID ${tweet.id}: ${JSON.stringify(
-          sentiment
-        )}`
+        `Fetched ${
+          meta.result_count
+        } tweets for query: "${query}". Pagination token: ${
+          meta.next_token || "None"
+        }`
       );
-      await storeTweetInDynamoDB(tweet, sentiment);
-      results.push({
-        tweet_id: tweet.id,
-        text: tweet.text,
-        sentiment_label: sentiment.label,
-        sentiment_score: sentiment.score,
-      });
-    }
+
+      // Process this batch of tweets
+      for (const tweet of tweets) {
+        console.info(`Processing tweet ID: ${tweet.id}`);
+        const sentiment = await analyzeSentiment(
+          tweet.text,
+          HUGGING_FACE_API_TOKEN
+        );
+        console.info(
+          `Sentiment analysis result for tweet ID ${tweet.id}: ${JSON.stringify(
+            sentiment
+          )}`
+        );
+        await storeTweetInDynamoDB(tweet, sentiment);
+        results.push({
+          tweet_id: tweet.id,
+          text: tweet.text,
+          sentiment_label: sentiment.label,
+          sentiment_score: sentiment.score,
+        });
+      }
+
+      totalProcessed += tweets.length;
+      nextToken = meta.next_token;
+
+      // Break if we've processed enough tweets or there are no more tweets
+      if (totalProcessed >= maxTotalTweets || !nextToken) {
+        break;
+      }
+    } while (true);
 
     console.info("All tweets processed successfully.");
     return {
@@ -138,63 +157,34 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 const searchTweets = async (
   query: string,
   TWITTER_BEARER_TOKEN: string,
-  maxResultsPerPage = 10,
-  totalResults = 5000
+  maxResults: number,
+  nextPageToken?: string
 ): Promise<TwitterApiResponse> => {
   const url = "https://api.twitter.com/2/tweets/search/recent";
-  const tweets: Tweet[] = [];
-  let nextToken: string | undefined = undefined;
-  let fetchedResults = 0;
 
-  while (fetchedResults < totalResults) {
-    const params = new URLSearchParams({
-      query,
-      max_results: maxResultsPerPage.toString(),
-      "tweet.fields": "id,text,created_at,author_id",
-    });
+  const params = new URLSearchParams({
+    query,
+    max_results: maxResults.toString(),
+    "tweet.fields": "id,text,created_at,author_id",
+  });
 
-    if (nextToken) {
-      params.append("next_token", nextToken);
-    }
-
-    const response = await fetch(`${url}?${params.toString()}`, {
-      headers: {
-        Authorization: `Bearer ${TWITTER_BEARER_TOKEN}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `Twitter API error: ${response.status} - ${await response.text()}`
-      );
-    }
-
-    const data = (await response.json()) as TwitterApiResponse;
-    console.info(
-      `Fetched ${data.meta.result_count} tweets. Next token: ${data.meta.next_token}`
-    );
-
-    // Append the fetched tweets to the list
-    tweets.push(...data.data);
-    fetchedResults += data.meta.result_count;
-
-    // Check if there's more data to fetch
-    if (data.meta.next_token) {
-      nextToken = data.meta.next_token;
-    } else {
-      break; // No more pages to fetch
-    }
+  if (nextPageToken) {
+    params.append("next_token", nextPageToken);
   }
 
-  return {
-    data: tweets.slice(0, totalResults), // Ensure the total number does not exceed the limit
-    meta: {
-      newest_id: tweets[0]?.id || "",
-      oldest_id: tweets[tweets.length - 1]?.id || "",
-      result_count: tweets.length,
-      next_token: nextToken,
+  const response = await fetch(`${url}?${params.toString()}`, {
+    headers: {
+      Authorization: `Bearer ${TWITTER_BEARER_TOKEN}`,
     },
-  };
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Twitter API error: ${response.status} - ${await response.text()}`
+    );
+  }
+
+  return (await response.json()) as TwitterApiResponse;
 };
 
 // Function to analyze sentiment using Hugging Face API
