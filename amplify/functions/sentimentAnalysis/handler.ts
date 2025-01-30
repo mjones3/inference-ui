@@ -78,7 +78,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const results = [];
     let nextToken: string | undefined;
     let totalProcessed = 0;
-    const maxTotalTweets = 30;
+    const maxTotalTweets = 500;
     // Process tweets in batches
     do {
       // Fetch one page of tweets
