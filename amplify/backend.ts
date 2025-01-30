@@ -40,24 +40,15 @@ const lambdaIntegration = new LambdaIntegration(
   backend.sentimentAnalysis.resources.lambda
 );
 
-// create a new resource path with IAM authorization
-const itemsPath = myRestApi.root.addResource("items", {
+// create sentiment analysis endpoint with IAM authorization
+const sentimentPath = myRestApi.root.addResource("sentiment", {
   defaultMethodOptions: {
     authorizationType: AuthorizationType.IAM,
   },
 });
 
-// add methods you would like to create to the resource path
-itemsPath.addMethod("GET", lambdaIntegration);
-itemsPath.addMethod("POST", lambdaIntegration);
-itemsPath.addMethod("DELETE", lambdaIntegration);
-itemsPath.addMethod("PUT", lambdaIntegration);
-
-// add a proxy resource path to the API
-itemsPath.addProxy({
-  anyMethod: true,
-  defaultIntegration: lambdaIntegration,
-});
+// add only POST method for sentiment analysis
+sentimentPath.addMethod("POST", lambdaIntegration);
 
 // create a new IAM policy to allow Invoke access to the API
 const apiRestPolicy = new Policy(apiStack, "RestApiPolicy", {
