@@ -139,7 +139,7 @@ const searchTweets = async (
   query: string,
   TWITTER_BEARER_TOKEN: string,
   maxResultsPerPage = 10,
-  totalResults = 10
+  totalResults = 5000
 ): Promise<TwitterApiResponse> => {
   const url = "https://api.twitter.com/2/tweets/search/recent";
   const tweets: Tweet[] = [];
