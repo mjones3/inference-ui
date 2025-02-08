@@ -50,41 +50,8 @@ const App: React.FC = () => {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: "0 auto", padding: "1rem" }}>
-      <label
-        htmlFor="sentimentText"
-        style={{ display: "block", marginBottom: "0.5rem", fontWeight: "bold" }}
-      >
-        Enter text to evaluate sentiment
-      </label>
-      <form onSubmit={handleSubmit} style={{ marginBottom: "1rem" }}>
-        <textarea
-          id="sentimentText"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={4}
-          style={{ width: "100%", marginBottom: "0.5rem", resize: "vertical" }}
-        />
-        <button type="submit" style={{ width: "100%" }}>
-          Submit
-        </button>
-      </form>
-
-      {sentiment && (
-        <div
-          style={{
-            border: "1px solid #ccc",
-            padding: "0.5rem",
-            borderRadius: "4px",
-          }}
-        >
-          <strong>{sentiment}</strong>
-        </div>
-      )}
-
-      <div style={{ marginTop: "3rem" }}>
-        <TwitterSentimentSearch />
-      </div>
+    <div style={{ marginTop: "3rem" }}>
+      <TwitterSentimentSearch />
     </div>
   );
 };

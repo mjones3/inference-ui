@@ -1,25 +1,13 @@
-## AWS Amplify React+Vite Starter Template
+# Twitter Sentiment Analysis Proof-of-Concept
 
-This repository provides a starter template for creating applications using React+Vite and AWS Amplify, emphasizing easy setup for authentication, API, and database capabilities.
 
 ## Overview
 
-This template equips you with a foundational React application integrated with AWS Amplify, streamlined for scalability and performance. It is ideal for developers looking to jumpstart their project with pre-configured AWS services like Cognito, AppSync, and DynamoDB.
+This proof-of-concept searches Twitter for a search term entered by the user and then performs a sentiment analysis on it using the <a href="https://huggingface.co/distilbert/distilbert-base-uncased-finetuned-sst-2-english?text=I+like+you">distilbert/distilbert-base-uncased-finetuned-sst-2-english</a> transformer hosted on a Hugging Face inference endpoint.   
 
-## Features
 
-- **Authentication**: Setup with Amazon Cognito for secure user authentication.
-- **API**: Ready-to-use GraphQL endpoint with AWS AppSync.
-- **Database**: Real-time database powered by Amazon DynamoDB.
+## Diagram
 
-## Deploying to AWS
+Below is a diagram illustrating the architecture:
 
-For detailed instructions on deploying your application, refer to the [deployment section](https://docs.amplify.aws/react/start/quickstart/#deploy-a-fullstack-app-to-aws) of our documentation.
-
-## Security
-
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
-
-## License
-
-This library is licensed under the MIT-0 License. See the LICENSE file.
+<img src="images/Sentiment Analysis.png" width="1200" />
