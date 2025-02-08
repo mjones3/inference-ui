@@ -12,7 +12,7 @@ Below is a diagram illustrating the architecture:
 
 <img src="images/Sentiment Analysis.png" width="1200" />
 
-## QuickSight visualization
+## QuickSight Visualization
 
 
 <img src="images/Sentiment_Analysis_Quicksight.jpg" width="1200" />
